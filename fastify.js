@@ -7,12 +7,10 @@ const querystring = require('querystring')
 const Middie = require('middie')
 const lightMyRequest = require('light-my-request')
 const proxyAddr = require('proxy-addr')
-const onRateLimit = require('./lib/rateLimit')
 
 const {
   kChildren,
   kBodyLimit,
-  kRateLimitConnector,
   kRoutePrefix,
   kLogLevel,
   kHooks,
@@ -74,7 +72,6 @@ function build (options) {
   const querystringParser = options.querystringParser || querystring.parse
   const genReqId = options.genReqId || reqIdGenFactory(requestIdHeader)
   const bodyLimit = options.bodyLimit || defaultInitOptions.bodyLimit
-  const rateLimitConnector = options.rateLimitConnector || false
 
   // Instance Fastify components
   const { logger, hasLogger } = createLogger(options)
@@ -117,7 +114,6 @@ function build (options) {
     [kOptions]: options,
     [kChildren]: [],
     [kBodyLimit]: bodyLimit,
-    [kRateLimitConnector]: rateLimitConnector,
     [kRoutePrefix]: '',
     [kLogLevel]: '',
     [kHooks]: new Hooks(),
@@ -197,9 +193,7 @@ function build (options) {
     setNotFoundHandler: setNotFoundHandler,
     setErrorHandler: setErrorHandler,
     // Set fastify initial configuration options read-only object
-    initialConfig: getSecuredInitialConfig(options),
-    rateLimitConnector: false,
-    rateLimitMaxLocalCache: 5000
+    initialConfig: getSecuredInitialConfig(options)
   }
 
   Object.defineProperty(fastify, 'schemaCompiler', {
@@ -457,11 +451,6 @@ function build (options) {
 
       const config = opts.config || {}
       config.url = url
-
-      if (typeof opts.rateLimit === 'object') {
-        opts.rateLimit.redis = this[kRateLimitConnector]
-        this.use(url, onRateLimit(opts.rateLimit))
-      }
 
       const context = new Context(
         opts.schema,
